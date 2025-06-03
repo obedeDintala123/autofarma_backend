@@ -581,21 +581,21 @@ server.post(
         type: "object",
         properties: {
           nome: { type: "string" },
-          categoria: { type: "string" },
-          uso: { type: "number" },
+          quantidade: { type: "number" },
+          uso: { type: "string" },
           validade: { type: "string", format: "date" } // <- Aqui
         },
-        required: ["nome", "categoria", "uso", "validade"]
+        required: ["nome", "quantidade", "uso", "validade"]
       }
     }
   },
   async (request, reply) => {
     try {
-      const { nome, categoria, uso, validade } = request.body;
+      const { nome, quantidade, uso, validade } = request.body;
 
       const existingMedicines = await prisma.remedio.findFirst({
         where: {
-          OR: [{ nome }, { categoria }]
+          OR: [{ nome }, { uso }]
         }
       });
 
@@ -610,7 +610,7 @@ server.post(
       const remedio = await prisma.remedio.create({
         data: {
           nome,
-          categoria,
+          quantidade,
           uso,
           validade: new Date(validade) // <- Aqui
         }
