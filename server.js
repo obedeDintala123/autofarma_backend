@@ -334,7 +334,7 @@ server.get(
 
 // Rota para criar novo aluno
 server.post(
-  "/aluno",
+  "/aluno/register",
   {
     preHandler: [server.authenticate],
     schema: {
@@ -545,7 +545,7 @@ server.get(
       const remedios = await prisma.remedio.findMany();
 
       if (!remedios || remedios.length === 0) {
-        return reply.status(200).send({
+        return reply.status(201).send({
           success: true,
           error: false,
           data: [],

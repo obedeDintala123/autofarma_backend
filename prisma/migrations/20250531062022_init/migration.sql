@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `administrador` ADD COLUMN `id_card` VARCHAR(191) NOT NULL DEFAULT 'SEM_ID';
+
+-- AlterTable
+ALTER TABLE `aluno` ADD COLUMN `id_card` VARCHAR(191) NOT NULL DEFAULT 'SEM_ID';

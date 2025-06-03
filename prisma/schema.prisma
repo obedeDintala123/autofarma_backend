@@ -13,10 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Escola {
+model Administrador {
   id    Int     @id @default(autoincrement())
   nome  String
   senha String 
+  id_card String  @default("SEM_ID") 
 }
 
 model Aluno{
@@ -25,9 +26,8 @@ model Aluno{
   telefone Int
   sala  Int
   turno String
-  escolaId Int
-
-  escola Escola @relation(fields: [escolaId], references: [id])
+  id_card String  @default("SEM_ID") 
+  transacoes Transacao[] 
 }
 
 model Remedio{
@@ -36,9 +36,10 @@ model Remedio{
   quantidade Int
   uso String 
   validade  DateTime
+  transacoes Transacao[] 
 }
 
-model Transaction {
+model Transacao {
   id           Int       @id @default(autoincrement())
   hora         DateTime
   quantidade   Int
