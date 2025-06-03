@@ -42,13 +42,14 @@ server.post('/register',  {
       type: "object",
       properties: {
         nome: { type: "string" },
-        senha: { type: "string" }
+        senha: { type: "string" },
+        id_card: { type: "string" }
       },
-      required: ["nome", "senha"]
+      required: ["nome", "senha", "id_card"]
     }
   }
 }, async (request, reply) => {
-  const { nome, senha } = request.body;
+  const { nome, senha, id_card } = request.body;
 
   if (!nome || !senha) {
     return reply.status(400).send({
@@ -70,7 +71,7 @@ server.post('/register',  {
 
   const hashedPassword = await server.bcrypt.hash(senha, 10);
   const newUser = await prisma.administrador.create({
-    data: { nome, senha: hashedPassword },
+    data: { nome, senha: hashedPassword, id_card },
   });
 
   const token = server.jwt.sign({ id: newUser.id });
