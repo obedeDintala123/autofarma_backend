@@ -271,7 +271,7 @@ server.delete(
 
 
 
-//---------------------------------------------------------------Rotas para CRUD de Alunos----------------------------------------------------------
+//---------------------------------------Rotas para CRUD de Alunos----------------------------------------------------------
 
 
 // Rota para listar todos os alunos
@@ -509,7 +509,7 @@ server.delete(
   }
 );
 
-//------------------------------------------------------------Rota para CRUD de remedios------------------------------------------------------------
+//----------------------------------------------Rota para CRUD de remedios--------------------------------------------------
 
 // Rota para listar todos os remédios
 server.get(
@@ -581,7 +581,7 @@ server.post(
         type: "object",
         properties: {
           nome: { type: "string" },
-          categoria: { type: "number" },
+          categoria: { type: "string" },
           uso: { type: "number" },
           validade: { type: "string", format: "date" } // <- Aqui
         },
