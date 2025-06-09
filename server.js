@@ -18,7 +18,7 @@ server.register(fastifyBcrypt);
 
 server.register(fastifyCors, {
   origin: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ["Content-Type", "Authorization"]
 });
 
 // Middleware de autenticação
@@ -35,54 +35,148 @@ server.decorate("authenticate", async (request, reply) => {
 
 //------------------------------------------------------------Rotas para CRUD do administrador------------------------------------------------------
 
-// Rota de cadastro 
-server.post('/register',  {
-  schema: {
-    body: {
-      type: "object",
-      properties: {
-        nome: { type: "string" },
-        senha: { type: "string" },
-        id_card: { type: "string" }
-      },
-      required: ["nome", "senha", "id_card"]
+
+// Rota para pegar os dados do admin
+
+server.get("/admin/me", {
+  preHandler: [server.authenticate], // middleware para verificar o token
+  handler: async (request, reply) => {
+     console.log("Usuário autenticado:", request.user); // <- veja o que chega aquD
+    try {
+      const adminId = request.user.id;
+
+      const admin = await prisma.administrador.findUnique({
+        where: { id: adminId },
+        select: {
+          id: true,
+          nome: true,
+          id_card: true,
+        },
+      });
+
+      if (!admin) {
+        return reply.status(404).send({ message: "Administrador não encontrado" });
+      }
+
+      return reply.send(admin);
+    } catch (error) {
+      console.error("Erro ao buscar administrador:", error);
+      return reply.status(500).send({ message: "Erro interno do servidor" });
     }
   }
-}, async (request, reply) => {
-  const { nome, senha, id_card } = request.body;
-
-  if (!nome || !senha) {
-    return reply.status(400).send({
-      success: false,
-      error: true,
-      message: "Nome e senha são obrigatórios",
-    });
-  }
-
-  const existingUser = await prisma.administrador.findFirst({ where: { nome } });
-
-  if (existingUser) {
-    return reply.status(409).send({
-      success: false,
-      error: true,
-      message: "Usuário já existente",
-    });
-  }
-
-  const hashedPassword = await server.bcrypt.hash(senha, 10);
-  const newUser = await prisma.administrador.create({
-    data: { nome, senha: hashedPassword, id_card },
-  });
-
-  const token = server.jwt.sign({ id: newUser.id });
-
-  return reply.status(201).send({
-    success: true,
-    error: false,
-    message: "Cadastro realizado com sucesso",
-    token,
-  });
 });
+
+// Rota para mostrar os administradores
+
+server.get(
+  "/administradores",
+  {
+    preHandler: [server.authenticate],
+    schema: {
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "boolean" },
+            data: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "number" },
+                  nome: { type: "string" },
+                  id_card: { type: "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  async (request, reply) => {
+    try {
+      const administradores = await prisma.administrador.findMany();
+
+      if (!administradores || administradores.length === 0) {
+        return reply.status(404).send({
+          success: false,
+          error: true,
+          message: "Nenhum administrador encontrado"
+        });
+      }
+
+      return reply.status(200).send({
+        success: true,
+        error: false,
+        data: administradores
+      });
+    } catch (error) {
+      server.log.error(error);
+      return reply.status(500).send({
+        success: false,
+        error: true,
+        message: "Algo deu errado. Tente novamente."
+      });
+    }
+  }
+);
+
+// Rota de cadastro
+server.post(
+  "/register",
+  {
+    schema: {
+      body: {
+        type: "object",
+        properties: {
+          nome: { type: "string" },
+          senha: { type: "string" },
+          id_card: { type: "string" }
+        },
+        required: ["nome", "senha"]
+      }
+    }
+  },
+  async (request, reply) => {
+    const { nome, senha, id_card } = request.body;
+
+    if (!nome || !senha) {
+      return reply.status(400).send({
+        success: false,
+        error: true,
+        message: "Nome e senha são obrigatórios"
+      });
+    }
+
+    const existingUser = await prisma.administrador.findFirst({
+      where: { nome }
+    });
+
+    if (existingUser) {
+      return reply.status(409).send({
+        success: false,
+        error: true,
+        message: "Usuário já existente"
+      });
+    }
+
+    const hashedPassword = await server.bcrypt.hash(senha, 10);
+    const newUser = await prisma.administrador.create({
+      data: { nome, senha: hashedPassword, id_card }
+    });
+
+    const token = server.jwt.sign({ id: newUser.id });
+
+    return reply.status(201).send({
+      success: true,
+      error: false,
+      message: "Cadastro realizado com sucesso",
+      token
+    });
+  }
+);
 
 // Rota de login
 server.post(
@@ -107,7 +201,7 @@ server.post(
         return reply.status(400).send({
           success: false,
           error: true,
-          message: "Nome e senha são obrigatórios",
+          message: "Nome e senha são obrigatórios"
         });
       }
 
@@ -117,7 +211,7 @@ server.post(
         return reply.status(404).send({
           success: false,
           error: true,
-          message: "Usuário não encontrado",
+          message: "Usuário não encontrado"
         });
       }
 
@@ -127,7 +221,7 @@ server.post(
         return reply.status(401).send({
           success: false,
           error: true,
-          message: "Usuário ou senha incorreta!",
+          message: "Usuário ou senha incorreta!"
         });
       }
 
@@ -137,9 +231,8 @@ server.post(
         success: true,
         error: false,
         message: "Login efetuado com sucesso",
-        token,
+        token
       });
-
     } catch (error) {
       server.log.error(error);
       reply.status(500).send({
@@ -169,9 +262,9 @@ server.put(
         type: "object",
         properties: {
           nome: { type: "string" },
-          senha: { type: "string" },
+          senha: { type: "string" }
         },
-        required: ["nome", "senha"],
+        required: ["nome", "senha"]
       }
     }
   },
@@ -203,7 +296,6 @@ server.put(
         message: "Conta atualizada com sucesso",
         admin
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -235,7 +327,7 @@ server.delete(
     try {
       const { id } = request.params;
 
-      const existingAdmin= await prisma.administrador.findFirst({
+      const existingAdmin = await prisma.administrador.findFirst({
         where: { id: Number(id) }
       });
 
@@ -257,7 +349,6 @@ server.delete(
         message: "Conta removida com sucesso!",
         admin
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -269,10 +360,7 @@ server.delete(
   }
 );
 
-
-
-//---------------------------------------Rotas para CRUD de Alunos----------------------------------------------------------
-
+//------------------------------------------------------------Rotas para CRUD de Alunos----------------------------------------------------------
 
 // Rota para listar todos os alunos
 server.get(
@@ -295,7 +383,8 @@ server.get(
                   nome: { type: "string" },
                   telefone: { type: "number" },
                   sala: { type: "number" },
-                  turno: { type: "string" }
+                  turno: { type: "string" },
+                  id_card: { type: "string" }
                 }
               }
             }
@@ -321,7 +410,6 @@ server.get(
         error: false,
         data: alunos
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -335,7 +423,7 @@ server.get(
 
 // Rota para criar novo aluno
 server.post(
-  "/aluno/register",
+  "/aluno",
   {
     preHandler: [server.authenticate],
     schema: {
@@ -345,19 +433,20 @@ server.post(
           nome: { type: "string" },
           telefone: { type: "number" },
           sala: { type: "number" },
-          turno: { type: "string" }
+          turno: { type: "string" },
+          id_card: { type: "string" }
         },
-        required: ["nome", "telefone", "sala", "turno"]
+        required: ["nome", "telefone", "sala", "turno", "id_card"]
       }
     }
   },
   async (request, reply) => {
     try {
-      const { nome, telefone, sala, turno } = request.body;
+      const { nome, telefone, sala, turno, id_card } = request.body;
 
       const existingStudent = await prisma.aluno.findFirst({
         where: {
-          OR: [{ nome }, { telefone }]
+          OR: [{ nome }, { telefone }, { id_card }]
         }
       });
 
@@ -370,7 +459,7 @@ server.post(
       }
 
       const aluno = await prisma.aluno.create({
-        data: { nome, telefone, sala, turno }
+        data: { nome, telefone, sala, turno, id_card }
       });
 
       return reply.status(201).send({
@@ -379,7 +468,7 @@ server.post(
         message: "Aluno cadastrado com sucesso",
         aluno
       });
-
+      
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -391,7 +480,7 @@ server.post(
   }
 );
 
-// Rota para atualizar 
+// Rota para atualizar
 server.put(
   "/aluno/:id",
   {
@@ -410,18 +499,19 @@ server.put(
           nome: { type: "string" },
           telefone: { type: "number" },
           sala: { type: "number" },
-          turno: { type: "string" }
+          turno: { type: "string" },
+          id_card: { type: "string" } // 👈 Novo campo permitido
         },
-        required: ["nome", "telefone", "sala", "turno"]
+        required: ["nome", "telefone", "sala", "turno", "id_card"]
       }
     }
   },
   async (request, reply) => {
     try {
       const { id } = request.params;
-      const { nome, telefone, sala, turno } = request.body;
+      const { nome, telefone, sala, turno, id_card } = request.body;
 
-      const existingStudent = await prisma.aluno.findFirst({
+      const existingStudent = await prisma.aluno.findUnique({
         where: { id: Number(id) }
       });
 
@@ -435,7 +525,7 @@ server.put(
 
       const aluno = await prisma.aluno.update({
         where: { id: Number(id) },
-        data: { nome, telefone, sala, turno }
+        data: { nome, telefone, sala, turno, id_card }
       });
 
       return reply.status(200).send({
@@ -444,7 +534,6 @@ server.put(
         message: "Aluno atualizado com sucesso",
         aluno
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -456,7 +545,7 @@ server.put(
   }
 );
 
-// Rota para remover 
+// Rota para remover
 server.delete(
   "/aluno/:id",
   {
@@ -497,7 +586,6 @@ server.delete(
         message: "Aluno removido com sucesso",
         aluno
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -531,7 +619,8 @@ server.get(
                   id: { type: "number" },
                   nome: { type: "string" },
                   categoria: { type: "string" },
-                  uso: { type: "string" },
+                  quantidade: { type: "number" },
+                  validade: { type: "string" }
                 }
               }
             },
@@ -559,7 +648,6 @@ server.get(
         error: false,
         data: remedios
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -582,20 +670,20 @@ server.post(
         properties: {
           nome: { type: "string" },
           quantidade: { type: "number" },
-          uso: { type: "string" },
-          validade: { type: "string", format: "date" } // <- Aqui
+          categoria: { type: "string" },
+          validade: { type: "string" }
         },
-        required: ["nome", "quantidade", "uso", "validade"]
+        required: ["nome", "quantidade", "categoria", "validade"]
       }
     }
   },
   async (request, reply) => {
     try {
-      const { nome, quantidade, uso, validade } = request.body;
+      const { nome, quantidade, categoria, validade } = request.body;
 
       const existingMedicines = await prisma.remedio.findFirst({
         where: {
-          OR: [{ nome }, { uso }]
+          OR: [{ nome }, { categoria }]
         }
       });
 
@@ -611,7 +699,7 @@ server.post(
         data: {
           nome,
           quantidade,
-          uso,
+          categoria,
           validade: new Date(validade) // <- Aqui
         }
       });
@@ -622,7 +710,6 @@ server.post(
         message: "Remédio adicionado com sucesso!",
         remedio
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -633,7 +720,6 @@ server.post(
     }
   }
 );
-
 
 // Rota para atualização
 server.put(
@@ -653,16 +739,16 @@ server.put(
         properties: {
           nome: { type: "string" },
           categoria: { type: "string" },
-          uso: { type: "string" },
+          quantidade: { type: "number" }
         },
-        required: ["nome", "categoria", "uso"]
+        required: ["nome", "categoria", "quantidade"]
       }
     }
   },
   async (request, reply) => {
     try {
       const { id } = request.params;
-      const { nome, categoria, uso } = request.body;
+      const { nome, categoria, quantidade } = request.body;
 
       const existingMedicines = await prisma.remedio.findFirst({
         where: { id: Number(id) }
@@ -678,7 +764,7 @@ server.put(
 
       const remedio = await prisma.remedio.update({
         where: { id: Number(id) },
-        data: { nome, categoria, uso }
+        data: { nome, categoria, quantidade }
       });
 
       return reply.status(200).send({
@@ -687,7 +773,6 @@ server.put(
         message: "Remédio atualizado com sucesso!",
         remedio
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -699,7 +784,7 @@ server.put(
   }
 );
 
-// Rota para remover 
+// Rota para remover
 server.delete(
   "/remedio/:id",
   {
@@ -740,7 +825,6 @@ server.delete(
         message: "Remédio removido com sucesso!",
         remedio
       });
-
     } catch (error) {
       server.log.error(error);
       return reply.status(500).send({
@@ -752,41 +836,166 @@ server.delete(
   }
 );
 
+server.get("/dashboard/summary", async (request, reply) => {
+  try {
+    const totalRemedios = await prisma.remedio.count();
+
+    const dataAtual = new Date();
+    const remediosVencidos = await prisma.remedio.count({
+      where: {
+        validade: {
+          lt: dataAtual
+        }
+      }
+    });
+
+    const totalTransacoes = await prisma.transacao.count();
+
+    const remediosBaixoEstoque = await prisma.remedio.count({
+      where: {
+        quantidade: {
+          lt: 5
+        }
+      }
+    });
+
+    const totalAlunos = await prisma.aluno.count();
+
+    const alunosRecentes = await prisma.aluno.findMany({
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 5
+    });
+
+    return {
+      totalRemedios,
+      remediosVencidos,
+      totalTransacoes,
+      remediosBaixoEstoque,
+      totalAlunos,
+      alunosRecentes
+    };
+  } catch (error) {
+    request.log.error(error);
+    reply.status(500).send({ error: "Erro ao buscar dados do dashboard" });
+  }
+});
+
+server.get("/transacao", async (request, reply) => {
+  try {
+    const transacoes = await prisma.transacao.findMany({
+      orderBy: {
+        hora: "desc",
+      },
+      include: {
+        aluno: {
+          select: {
+            id: true,
+            nome: true,
+            id_card: true,
+          },
+        },
+        remedio: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+      },
+    });
+
+    const respostaFormatada = transacoes.map((transacao) => ({
+  id: transacao.id,
+  hora: transacao.hora.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }),
+  quantidade: transacao.quantidade,
+  slot: transacao.slot,
+  status: transacao.status,
+  usuario: transacao.aluno.nome,
+  id_card: transacao.aluno.id_card,
+  medicamento: transacao.remedio.nome,
+}));
+
+    return reply.send(respostaFormatada);
+  } catch (error) {
+    console.error("Erro ao buscar transações:", error);
+    return reply.status(500).send({ erro: "Erro interno ao buscar transações" });
+  }
+});
 
 
 //------------------------------------------------------( Rota para receber dados do ESP32 )-------------------------------------------------------
 
-server.post('/api/receber-dados', async (request, reply) => {
-  const { sensor, valor } = request.body;
+  server.post("/transacao", async (request, reply) => {
+    const {
+      hora,
+      medicamento,
+      quantidade,
+      slot,
+      usuario,
+      status,
+    } = request.body;
 
-  console.log(`Sensor: ${sensor} | Valor: ${valor}`);
+    try {
+      // Buscar aluno pelo id_card (usuario)
+      const aluno = await prisma.aluno.findUnique({
+        where: { id_card: usuario },
+      });
 
-  return { mensagem: 'Dados recebidos com sucesso', sensor, valor };
+      if (!aluno) {
+        return reply.status(404).send({ erro: "Aluno não encontrado" });
+      }
+
+      // Buscar remedio pelo nome
+      const remedio = await prisma.remedio.findFirst({
+        where: { nome: medicamento },
+      });
+
+      if (!remedio) {
+        return reply.status(404).send({ erro: "Remédio não encontrado" });
+      }
+
+      // Criar transação no banco
+      const transacao = await prisma.transacao.create({
+        data: {
+          hora: new Date(),
+          quantidade,
+          slot,
+          status,
+          alunoId: aluno.id,
+          remedioId: remedio.id,
+        },
+      });
+
+     return reply.status(201).send({
+  mensagem: "Transação registrada com sucesso",
+  transacao,
+  aluno: {
+    id: aluno.id,
+    nome: aluno.nome,
+    id_card: aluno.id_card
+  },
+  remedio: {
+    id: remedio.id,
+    nome: remedio.nome
+  }
 });
+    } catch (error) {
+      console.error("Erro ao registrar transação:", error);
+      return reply.status(500).send({ erro: "Erro interno no servidor" });
+    }
+  });
 
-
-
-// -------------------------------------------- Rotas para receber dados de remedios------------------------------------------------------------
-server.post('/api/remedios-vencidos', async (request, reply) => {
- 
-});
-
-server.post('/api/remedios-baixo-estoque', async (request, reply) => {
- 
-});
-
-// --------------------------------------------------------------- Rota para alertas -------------------------------------------------------------
-server.post('/api/alertas', async (request, reply) => {
- 
-});
-
-// ------------------------------------------------------------- Rota para notificações ----------------------------------------------------------
-server.post('/api/notificacoes', async (request, reply) => {
- 
-});
 
 // ------------------------------------------------------ Inicialização do servidor ------------------------------------------------------
-server.listen({ port: 3333 }, (err, address) => {
+server.listen({ port: 3333, host: "0.0.0.0" }, (err, address) => {
   if (err) {
     server.log.error(err);
     process.exit(1);

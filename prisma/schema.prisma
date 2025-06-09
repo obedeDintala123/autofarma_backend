@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,40 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Administrador {
-  id    Int     @id @default(autoincrement())
-  nome  String
-  senha String 
-  id_card String  @default("SEM_ID") 
+model administrador {
+  id      Int    @id @default(autoincrement())
+  nome    String
+  senha   String
+  id_card String
 }
 
-model Aluno{
-  id    Int     @id @default(autoincrement())
-  nome  String
-  telefone Int
-  sala  Int
-  turno String
-  id_card String  @default("SEM_ID") 
-  transacoes Transacao[] 
+model aluno {
+  id        Int         @id @default(autoincrement())
+  nome      String
+  telefone  Int
+  sala      Int
+  turno     String
+  id_card   String      @unique
+  createdAt DateTime @default(now())  // essa coluna deve estar no modelo
+  transacao transacao[]
 }
 
-model Remedio{
-  id    Int     @id @default(autoincrement())
-  nome  String
+model remedio {
+  id         Int         @id @default(autoincrement())
+  nome       String
+  categoria        String
   quantidade Int
-  uso String 
-  validade  DateTime
-  transacoes Transacao[] 
+  validade   DateTime
+  transacao  transacao[]
 }
 
-model Transacao {
-  id           Int       @id @default(autoincrement())
-  hora         DateTime
-  quantidade   Int
-  status       String
-  alunoId      Int
-  remedioId    Int
+model transacao {
+  id          Int       @id @default(autoincrement())
+  hora        DateTime
+  quantidade  Int
+  status      String
+  slot        Int
+  alunoId     Int
+  remedioId   Int
+  aluno       aluno     @relation(fields: [alunoId], references: [id])
+  remedio     remedio   @relation(fields: [remedioId], references: [id])
 
-  aluno        Aluno     @relation(fields: [alunoId], references: [id])
-  remedio      Remedio   @relation(fields: [remedioId], references: [id])
+  @@index([alunoId])
+  @@index([remedioId])
 }
